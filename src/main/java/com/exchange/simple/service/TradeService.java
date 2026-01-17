@@ -2,6 +2,7 @@ package com.exchange.simple.service;
 
 import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.exchange.simple.engin.disruptor.DisruptorEngine;
 import com.exchange.simple.entity.*;
 import com.exchange.simple.event.TradeEvent;
 import com.exchange.simple.mapper.*;
@@ -28,6 +29,9 @@ public class TradeService {
     private WalletMapper walletMapper;
     @Autowired
     private OrderMapper orderMapper;
+
+    @Autowired
+    private DisruptorEngine disruptorEngine;
 
     @Autowired
     private SimpMessagingTemplate wsTemplate; // WebSocket
@@ -116,7 +120,8 @@ public class TradeService {
         synchronized (engine) {
             // processOrder 接受一个回调函数 this::handleMatch
             // 意思是：如果撮合成功了，请执行下面的 handleMatch 方法
-            engine.processOrder(order, this::handleMatch);
+//            engine.processOrder(order, this::handleMatch);
+            disruptorEngine.onOrder(order);
         }
 
         return "下单成功，订单ID: " + order.getId();
