@@ -1,11 +1,13 @@
 package com.exchange.simple.entity;
 
 import com.exchange.simple.entity.OrderEnt;
+import com.exchange.simple.vo.DepthVO;
 import lombok.Data;
 import java.math.BigDecimal;
 import java.util.Comparator;
 import java.util.PriorityQueue;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 /**
  * 核心订单簿 (OrderBook)
@@ -119,5 +121,58 @@ public class OrderBook {
         public TradeMatch(Long t, Long m, BigDecimal p, BigDecimal a) {
             this.takerId = t; this.makerId = m; this.price = p; this.amount = a;
         }
+    }
+
+    /**
+     * 恢复订单 (仅用于启动时加载)
+     */
+    public void restoreOrder(OrderEnt order) {
+        if ("BUY".equals(order.getDirection())) {
+            buyQueue.add(order);
+        } else {
+            sellQueue.add(order);
+        }
+    }
+
+    /**
+     * 获取当前盘口快照
+     * @param limit 档位深度 (例如 5)
+     */
+    public DepthVO getDepth(int limit) {
+        DepthVO vo = new DepthVO();
+        vo.setSymbol(this.symbol);
+
+        // 获取买单 (价格从高到低)
+        // 需要聚合：相同价格的数量要加起来
+        // MVP 简化版：暂不聚合，直接展示前 N 单 (生产环境必须聚合 group by price)
+        vo.setBids(buyQueue.stream()
+                .sorted((o1, o2) -> o2.getPrice().compareTo(o1.getPrice())) // 降序
+                .limit(limit)
+                .map(o -> new DepthVO.PriceVol(o.getPrice(), o.getAmount()))
+                .collect(Collectors.toList()));
+
+        // 获取卖单 (价格从低到高)
+        vo.setAsks(sellQueue.stream()
+                .sorted(Comparator.comparing(OrderEnt::getPrice)) // 升序
+                .limit(limit)
+                .map(o -> new DepthVO.PriceVol(o.getPrice(), o.getAmount()))
+                .collect(Collectors.toList()));
+
+        return vo;
+    }
+
+    /**
+     * 从内存队列中移除订单
+     * @return true=移除成功, false=没找到(可能已经成交了)
+     */
+    public boolean removeOrder(Long orderId) {
+        // 尝试从买单队列移除
+        //这需要遍历队列，使用 removeIf (Java 8)
+        boolean removedFromBuy = buyQueue.removeIf(o -> o.getId().equals(orderId));
+        if (removedFromBuy) return true;
+
+        // 尝试从卖单队列移除
+        boolean removedFromSell = sellQueue.removeIf(o -> o.getId().equals(orderId));
+        return removedFromSell;
     }
 }

@@ -37,4 +37,9 @@ public class ExchangeController {
             return "Error: " + e.getMessage();
         }
     }
+
+    @PostMapping("/cancel")
+    public String cancelOrder(Long orderId) {
+        return tradeService.cancelOrder(orderId);
+    }
 }
