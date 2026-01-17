@@ -1,6 +1,7 @@
 package com.exchange.simple.controller;
 
 import com.exchange.simple.service.TradeService;
+import com.exchange.simple.util.UserContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,18 +25,17 @@ public class ExchangeController {
      */
     @PostMapping("/order")
     public String placeOrder(
-            @RequestParam Long userId,
+            // @RequestParam Long userId,  <-- 删掉这个！
             @RequestParam String symbol,
             @RequestParam String direction,
             @RequestParam BigDecimal price,
             @RequestParam BigDecimal amount) {
 
-        try {
-            return tradeService.placeOrder(userId, symbol, direction, price, amount);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return "Error: " + e.getMessage();
-        }
+        // 1. 从 ThreadLocal 获取当前登录用户的 ID
+        Long currentUserId = UserContext.getUserId();
+
+        // 2. 调用 Service
+        return tradeService.placeOrder(currentUserId, symbol, direction, price, amount);
     }
 
     @PostMapping("/cancel")
